@@ -1,9 +1,9 @@
 #To run
 #bokeh serve --show core_validation.py
 
+from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.visualization.interval import PercentileInterval
-from astropy.io import fits
 
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper
@@ -13,12 +13,15 @@ from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
 from bokeh.io import curdoc
 
+from read_write_data import data_to_CDS
+
 import numpy as np
 import pandas as pd
 import os
 
 #Read maps
 #########
+valfold = './valid_cat/'
 filespath = './data/'
 files = os.listdir(filespath)
 
@@ -27,93 +30,26 @@ for file in files:
 	if file[-5:] == ".fits":
 		names.append(file[:-5])
 		
-#maps
-HDU = fits.open(filespath+names[0]+'.fits')
-image = HDU[0].data
-header = HDU[0].header
-sourcemap = ColumnDataSource({'name': [names[0]],
-							  'image': [image],
-							  'width': [image.shape[1]],
-							  'height': [image.shape[0]]})
-#cores
-cores = pd.read_csv(filespath+names[0]+'.csv',sep=';')
-ra = cores['WCS_ACOOR'].to_numpy()
-dec = cores['WCS_DCOOR'].to_numpy()
-wcs = WCS(header)
-reso = header['CDELT2'] * 3600.
-x, y = wcs.all_world2pix(ra,dec,1)
-w = cores['AFWHM01'].to_numpy()/reso
-h = cores['BFWHM01'].to_numpy()/reso
-angles = cores['THETA01'].to_numpy()-90
-angles = (angles * np.pi)/180.
-catsz = ra.size
-validation = np.repeat('Undefined',catsz)
-
-#HDUori = fits.open('/Users/robitaij/postdoc/Lhyrica/OrionA/orionA-S-250.image.resamp.fits')
-#header = HDUori[0].header
-#orion = HDUori[0].data
-
-#Read catalogue and define Bokeh CDSs
-####################################
-
-#wcs = WCS(header)
-#reso = header['CDELT2'] * 3600.
-
-'''cores = pd.read_csv('/Users/robitaij/postdoc/Lhyrica/OrionA/orionA-S.250.sources.ok.csv',sep=';')
-ra = cores['WCS_ACOOR'].to_numpy()
-dec = cores['WCS_DCOOR'].to_numpy()
-x, y = wcs.all_world2pix(ra,dec,1)
-w = cores['AFWHM01'].to_numpy()/reso
-h = cores['BFWHM01'].to_numpy()/reso
-angles = cores['THETA01'].to_numpy()-90
-angles = (angles * np.pi)/180.
-catsz = ra.size
-validation = np.repeat('Undefined',catsz)'''
-
-#GETSF data
-cdict = dict(ra=ra,dec=dec,x=x,y=y,width=w,height=h,angles=angles,validation=validation)
-source = ColumnDataSource(cdict)
-
-#New expert catalogue
-expdict = dict(x=[],y=[],width=[],height=[],angles=[])
-source2 = ColumnDataSource(expdict)
+mapdict, dict1, dict2 = data_to_CDS(filespath, names[0]) 
+sourcemap = ColumnDataSource(mapdict)
+source = ColumnDataSource(dict1)
+source2 = ColumnDataSource(dict2)
 
 #Interaction functions
 ######################
 
 def selectmap(attr, old, new):
-	#maps
-	HDU = fits.open(filespath+new+'.fits')
-	image = HDU[0].data
-	header = HDU[0].header
-	sourcemap.data = {'name': [new],
-					  'image': [image],
-					  'width': [image.shape[1]],
-					  'height': [image.shape[0]]}
-	plot.plot_height = np.int32(pw *(image.shape[0]/image.shape[1]))
+	mapdict, dict1, dict2 = data_to_CDS(filespath, new)
+	sourcemap.data = mapdict
+	source.data = dict1
+	source2.data = dict2
+	
+	plot.plot_height = np.int32(pw *(sourcemap.data['height'][0]/sourcemap.data['width'][0]))
 	plot.x_range.start = 0
 	plot.x_range.end = sourcemap.data['width'][0]
 	plot.y_range.start = 0
 	plot.y_range.end = sourcemap.data['height'][0]
 	plot.title.text = sourcemap.data['name'][0]
-	#cores
-	cores = pd.read_csv(filespath+new+'.csv',sep=';')
-	ra = cores['WCS_ACOOR'].to_numpy()
-	dec = cores['WCS_DCOOR'].to_numpy()
-	wcs = WCS(header)
-	reso = header['CDELT2'] * 3600.
-	x, y = wcs.all_world2pix(ra,dec,1)
-	w = cores['AFWHM01'].to_numpy()/reso
-	h = cores['BFWHM01'].to_numpy()/reso
-	angles = cores['THETA01'].to_numpy()-90
-	angles = (angles * np.pi)/180.
-	catsz = ra.size
-	validation = np.repeat('Undefined',catsz)
-	cdict = dict(ra=ra,dec=dec,x=x,y=y,width=w,height=h,angles=angles,validation=validation)
-	source.data = cdict
-	
-	expdict = dict(x=[],y=[],width=[],height=[],angles=[])
-	source2.data = expdict
 
 def select_core(attr, old, new):
 	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
@@ -130,6 +66,11 @@ def select_core(attr, old, new):
 		else:
 			sdict['validation'][index] = 'Undefined'
 			source.data = sdict
+	validate = pd.DataFrame.from_dict(sdict)
+	#valfold = './valid_cat/'
+	if not os.path.isdir(valfold):
+            os.makedirs(valfold)
+	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
 
 def select_newcore(attr, old, new):
 	for index in new:
@@ -141,7 +82,7 @@ def select_newcore(attr, old, new):
 			ella.value = source2.data['angles'][index]
 			
 def centering():
-	subheigth = 150
+	subheigth = 300
 	subwidth = np.int32(subheigth *(sourcemap.data['width'][0]/sourcemap.data['height'][0]))
 	for index in source.selected.indices:
 		plot.x_range.start = source.data['x'][index] - subwidth/2
@@ -154,6 +95,22 @@ def reset_view():
 	plot.x_range.end = sourcemap.data['width'][0]
 	plot.y_range.start = 0
 	plot.y_range.end = sourcemap.data['height'][0]
+	
+def save_newcat(attr, old, new):
+	NewCat = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[])
+	for Nindex in range(len(source2.data['x'])):
+		Nx = source2.data['x'][Nindex]
+		Ny = source2.data['y'][Nindex]
+		HDU = fits.open(filespath+select.value+'.fits')
+		header = HDU[0].header
+		wcs = WCS(header)
+		Nra, Ndec = wcs.all_pix2world(Nx,Ny,1)
+		NewCat['ra'].append(Nra)
+		NewCat['dec'].append(Ndec)
+		for key in ['x','y','width','height','angles']:
+			NewCat[key].append(source2.data[key][Nindex])
+		newcat = pd.DataFrame.from_dict(NewCat)
+		newcat.to_csv(valfold+'{}_NewCat.csv'.format(select.value),index=False)
 
 def save_valid():
 	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
@@ -162,7 +119,7 @@ def save_valid():
 			sdict[key].append(source.data[key][index])
 	#for index in range(catsz):
 	validate = pd.DataFrame.from_dict(sdict)
-	valfold = './valid_cat/'
+	#valfold = './valid_cat/'
 	if not os.path.isdir(valfold):
             os.makedirs(valfold)
 	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
@@ -229,21 +186,20 @@ def Aelliparam(attr, old, new):
 	for index in source2.selected.indices:
 		NewCoreCat['angles'][index] = ella.value
 		source2.data = NewCoreCat
-		
-	
+
 #Plot image and Table
 #####################
 	
 ph = 700
-pw = np.int32(ph *(image.shape[1]/image.shape[0]))
+pw = np.int32(ph *(sourcemap.data['width'][0]/sourcemap.data['height'][0]))
 
 select = Select(title="Region:", value=names[0], options=names)
 select.on_change("value", selectmap)
-plot = figure(plot_width = pw, plot_height = ph, x_range=(0,image.shape[1]), y_range=(0,image.shape[0]), match_aspect = True,tools=["tap,wheel_zoom,pan"],title=names[0])
+plot = figure(plot_width = pw, plot_height = ph, x_range=(0,sourcemap.data['width'][0]), y_range=(0,sourcemap.data['height'][0]), match_aspect = True,tools=["tap,wheel_zoom,pan"],title=names[0])
 plot.axis.visible = False
 
 interval = PercentileInterval(99.5)
-vmin, vmax = interval.get_limits(image)
+vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
 color_mapper = LinearColorMapper(palette="Inferno256",low=vmin,high=vmax)
 
 bkg = plot.image(image='image',
@@ -313,7 +269,8 @@ Sbutton.on_click(save_valid)
 Lbutton = Button(label="Load Cat",button_type="primary",max_width = np.int32(pw/2))
 Lbutton.on_click(load_valid)
 
-boxedit = BoxEditTool(renderers=[expert1])
+boxedit = BoxEditTool(renderers=[expert1], empty_value = 0.)
+expert2.data_source.on_change('data',save_newcat)
 
 center = Button(label="center object",button_type="default",max_width = np.int32(pw/2))
 center.on_click(centering)
@@ -321,9 +278,7 @@ center.on_click(centering)
 tooltips = [('index','$index'),('ra', '@ra'), ('dec', '@dec'),('x', '@x'), ('y', '@y')]
 plot.add_tools(HoverTool(tooltips=tooltips),boxedit)
 
-#grid = gridplot([[plot, data_table, Ndata_table], [radio_button_group, button, None], [ellw, None, None], [ellh, None, None], [ella, None, None]])
-
-#grid = gridplot([[text,plot,data_table],[radio_button_group,None, Ndata_table], [ellw, None, None], [ellh, None, None], [ella, None, None]])
+#Dashboard Display
 
 tab1 = Panel(child=data_table, title='catalogue')
 tab2 = Panel(child=Ndata_table, title='new cores')
