@@ -162,7 +162,10 @@ def save_valid():
 			sdict[key].append(source.data[key][index])
 	#for index in range(catsz):
 	validate = pd.DataFrame.from_dict(sdict)
-	validate.to_csv('./valid_cat/{}_ValidCat.csv'.format(select.value),index=False)
+	valfold = './valid_cat/'
+	if not os.path.isdir(valfold):
+            os.makedirs(valfold)
+	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
 		
 	NewCat = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[])
 	for Nindex in range(len(source2.data['x'])):
@@ -177,7 +180,7 @@ def save_valid():
 		for key in ['x','y','width','height','angles']:
 			NewCat[key].append(source2.data[key][Nindex])
 		newcat = pd.DataFrame.from_dict(NewCat)
-		newcat.to_csv('./valid_cat/{}_NewCat.csv'.format(select.value),index=False)
+		newcat.to_csv(valfold+'{}_NewCat.csv'.format(select.value),index=False)
 		
 def load_valid():
 	#global cdict, expdict
