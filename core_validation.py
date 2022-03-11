@@ -52,6 +52,7 @@ def selectmap(attr, old, new):
 	plot.title.text = sourcemap.data['name'][0]
 
 def select_core(attr, old, new):
+	#Change status
 	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
 	for key in ['ra','dec','x','y','width','height','angles','validation']:
 		for index in range(len(source.data['ra'])):
@@ -66,8 +67,12 @@ def select_core(attr, old, new):
 		else:
 			sdict['validation'][index] = 'Undefined'
 			source.data = sdict
+		#Update parameters
+		ellw.value = source.data['width'][index]
+		ellh.value = source.data['height'][index]
+		ella.value = source.data['angles'][index]
+	#Save catalogue
 	validate = pd.DataFrame.from_dict(sdict)
-	#valfold = './valid_cat/'
 	if not os.path.isdir(valfold):
             os.makedirs(valfold)
 	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
@@ -117,9 +122,7 @@ def save_valid():
 	for key in ['ra','dec','x','y','width','height','angles','validation']:
 		for index in range(len(source.data['ra'])):
 			sdict[key].append(source.data[key][index])
-	#for index in range(catsz):
 	validate = pd.DataFrame.from_dict(sdict)
-	#valfold = './valid_cat/'
 	if not os.path.isdir(valfold):
             os.makedirs(valfold)
 	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
@@ -161,31 +164,58 @@ def percentil(attr, old, new):
 	color_mapper.high = vmax
 	
 def Welliparam(attr, old, new):
-	NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
-	for Mindex in range(len(source2.data['x'])):
-		for key in ['x','y','width','height','angles']:
-				NewCoreCat[key].append(source2.data[key][Mindex])
-	for index in source2.selected.indices:
-		NewCoreCat['width'][index] = ellw.value
-		source2.data = NewCoreCat
+	if not (len(source.selected.indices) == 0):
+		sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+		for key in ['ra','dec','x','y','width','height','angles','validation']:
+			for index in range(len(source.data['ra'])):
+				sdict[key].append(source.data[key][index])
+		for index in source.selected.indices:
+			sdict['width'][index] = ellw.value
+			source.data = sdict
+	if not (len(source2.selected.indices) == 0):
+		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
+		for Mindex in range(len(source2.data['x'])):
+			for key in ['x','y','width','height','angles']:
+					NewCoreCat[key].append(source2.data[key][Mindex])
+		for index in source2.selected.indices:
+			NewCoreCat['width'][index] = ellw.value
+			source2.data = NewCoreCat
 		
 def Helliparam(attr, old, new):
-	NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
-	for Mindex in range(len(source2.data['x'])):
-		for key in ['x','y','width','height','angles']:
-				NewCoreCat[key].append(source2.data[key][Mindex])
-	for index in source2.selected.indices:
-		NewCoreCat['height'][index] = ellh.value
-		source2.data = NewCoreCat
+	if not (len(source.selected.indices) == 0):
+		sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+		for key in ['ra','dec','x','y','width','height','angles','validation']:
+			for index in range(len(source.data['ra'])):
+				sdict[key].append(source.data[key][index])
+		for index in source.selected.indices:
+			sdict['height'][index] = ellh.value
+			source.data = sdict
+	if not (len(source2.selected.indices) == 0):
+		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
+		for Mindex in range(len(source2.data['x'])):
+			for key in ['x','y','width','height','angles']:
+					NewCoreCat[key].append(source2.data[key][Mindex])
+		for index in source2.selected.indices:
+			NewCoreCat['height'][index] = ellh.value
+			source2.data = NewCoreCat
 		
 def Aelliparam(attr, old, new):
-	NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
-	for Mindex in range(len(source2.data['x'])):
-		for key in ['x','y','width','height','angles']:
-				NewCoreCat[key].append(source2.data[key][Mindex])
-	for index in source2.selected.indices:
-		NewCoreCat['angles'][index] = ella.value
-		source2.data = NewCoreCat
+	if not (len(source.selected.indices) == 0):
+		sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+		for key in ['ra','dec','x','y','width','height','angles','validation']:
+			for index in range(len(source.data['ra'])):
+				sdict[key].append(source.data[key][index])
+		for index in source.selected.indices:
+			sdict['angles'][index] = ella.value
+			source.data = sdict
+	if not (len(source2.selected.indices) == 0):
+		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
+		for Mindex in range(len(source2.data['x'])):
+			for key in ['x','y','width','height','angles']:
+					NewCoreCat[key].append(source2.data[key][Mindex])
+		for index in source2.selected.indices:
+			NewCoreCat['angles'][index] = ella.value
+			source2.data = NewCoreCat
 
 #Plot image and Table
 #####################

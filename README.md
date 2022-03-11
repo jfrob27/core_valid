@@ -25,7 +25,7 @@ The next step is to download the data, the fits maps and the core catalogue to v
 
 ## Launch Bokeh server
 
-The core validation interface is based on [Bokeh](https://docs.bokeh.org/en/latest/index.html) Python library for interactive visualisations. Once all the requirements are installed, in the terminal in the *core_valid* folder, with the virtual environment activated, enter the following command:
+The core validation interface is based on [Bokeh](https://bokeh.org/) Python library for interactive visualisations. Once all the requirements are installed, in the terminal in the *core_valid* folder, with the virtual environment activated, enter the following command:
 
 ```
 bokeh serve --show core_validation.py
