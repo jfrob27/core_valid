@@ -68,6 +68,12 @@ def select_core(attr, old, new):
 			sdict['validation'][index] = 'Undefined'
 			source.data = sdict
 		#Update parameters
+		ellx.value = source.data['x'][index]
+		ellx.start = source.data['x'][index] - 50.
+		ellx.end = source.data['x'][index] + 50.
+		elly.value = source.data['y'][index]
+		elly.start = source.data['y'][index] - 50.
+		elly.end = source.data['y'][index] + 50.
 		ellw.value = source.data['width'][index]
 		ellh.value = source.data['height'][index]
 		ella.value = source.data['angles'][index]
@@ -79,12 +85,28 @@ def select_core(attr, old, new):
 
 def select_newcore(attr, old, new):
 	for index in new:
+		ellx.value = source2.data['x'][index]
+		ellx.start = source2.data['x'][index] - 50.
+		ellx.end = source2.data['x'][index] + 50.
+		elly.value = source2.data['y'][index]
+		elly.start = source2.data['y'][index] - 50.
+		elly.end = source2.data['y'][index] + 50.
 		ellw.value = source2.data['width'][index]
 		ellh.value = source2.data['height'][index]
 		if source2.data['angles'][index] == None:
 			ella.value = 0
 		else:
 			ella.value = source2.data['angles'][index]
+			
+def reset_core():
+	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+	for key in ['ra','dec','x','y','width','height','angles','validation']:
+		for index in range(len(source.data['ra'])):
+			sdict[key].append(source.data[key][index])
+	for index in source.selected.indices:
+		for key in ['ra','dec','x','y','width','height','angles','validation']:
+			sdict[key][index] = dict1[key][index]
+	source.data = sdict
 			
 def centering():
 	subheigth = 300
@@ -163,6 +185,58 @@ def percentil(attr, old, new):
 	color_mapper.low = vmin
 	color_mapper.high = vmax
 	
+def Xelliparam(attr, old, new):
+	if not (len(source.selected.indices) == 0):
+		sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+		for key in ['ra','dec','x','y','width','height','angles','validation']:
+			for index in range(len(source.data['ra'])):
+				sdict[key].append(source.data[key][index])
+		for index in source.selected.indices:
+			sdict['x'][index] = ellx.value
+			HDU = fits.open(filespath+select.value+'.fits')
+			header = HDU[0].header
+			wcs = WCS(header)
+			Nra, Ndec = wcs.all_pix2world(ellx.value,elly.value,1)
+			sdict['ra'][index] = Nra
+			sdict['dec'][index] = Ndec
+			source.data = sdict
+			if sdict['x'][index] != dict1['x'][index]:
+				sdict['validation'][index] = 'Modified'
+	if not (len(source2.selected.indices) == 0):
+		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
+		for Mindex in range(len(source2.data['x'])):
+			for key in ['x','y','width','height','angles']:
+					NewCoreCat[key].append(source2.data[key][Mindex])
+		for index in source2.selected.indices:
+			NewCoreCat['x'][index] = ellx.value
+			source2.data = NewCoreCat
+			
+def Yelliparam(attr, old, new):
+	if not (len(source.selected.indices) == 0):
+		sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+		for key in ['ra','dec','x','y','width','height','angles','validation']:
+			for index in range(len(source.data['ra'])):
+				sdict[key].append(source.data[key][index])
+		for index in source.selected.indices:
+			sdict['y'][index] = elly.value
+			HDU = fits.open(filespath+select.value+'.fits')
+			header = HDU[0].header
+			wcs = WCS(header)
+			Nra, Ndec = wcs.all_pix2world(ellx.value,elly.value,1)
+			sdict['ra'][index] = Nra
+			sdict['dec'][index] = Ndec
+			source.data = sdict
+			if sdict['y'][index] != dict1['y'][index]:
+				sdict['validation'][index] = 'Modified'
+	if not (len(source2.selected.indices) == 0):
+		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
+		for Mindex in range(len(source2.data['x'])):
+			for key in ['x','y','width','height','angles']:
+					NewCoreCat[key].append(source2.data[key][Mindex])
+		for index in source2.selected.indices:
+			NewCoreCat['y'][index] = elly.value
+			source2.data = NewCoreCat
+	
 def Welliparam(attr, old, new):
 	if not (len(source.selected.indices) == 0):
 		sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
@@ -172,6 +246,8 @@ def Welliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['width'][index] = ellw.value
 			source.data = sdict
+			if sdict['width'][index] != dict1['width'][index]:
+				sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -190,6 +266,8 @@ def Helliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['height'][index] = ellh.value
 			source.data = sdict
+			if sdict['height'][index] != dict1['height'][index]:
+				sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -208,6 +286,8 @@ def Aelliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['angles'][index] = ella.value
 			source.data = sdict
+			if sdict['angles'][index] != dict1['angles'][index]:
+				sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -235,8 +315,8 @@ color_mapper = LinearColorMapper(palette="Inferno256",low=vmin,high=vmax)
 bkg = plot.image(image='image',
            dh='height', dw='width', x=0, y=0, source=sourcemap, color_mapper=color_mapper)
 
-STATUS = ['Undefined', 'VALID','REJECT']
-COLOR = ['gray','red','blue']
+STATUS = ['Undefined', 'VALID','REJECT','Modified']
+COLOR = ['gray','red','blue','red']
 renderer = plot.ellipse(x="x", y="y", width="width", height="height", angle="angles", line_color=factor_cmap('validation', COLOR, STATUS),fill_alpha=0,source=source,legend_field='validation')
 
 #Trace first position and size for new cores
@@ -281,17 +361,24 @@ slider = Slider(start=90, end=100, value= 99.5, step=0.01, title="Percentile Int
 slider.on_change("value",percentil)
 
 expert1.data_source.selected.on_change("indices", select_newcore)
+ellx = Slider(start=2, end=100, value= 20, step=0.5, title="Ellipse x position", max_width = np.int32(pw/2))
+elly = Slider(start=2, end=100, value= 20, step=0.5, title="Ellipse y position", max_width = np.int32(pw/2))
 ellw = Slider(start=2, end=100, value= 20, step=0.1, title="Ellipse width", max_width = np.int32(pw/2))
 ellh = Slider(start=2, end=100, value= 20, step=0.1, title="Ellipse height", max_width = np.int32(pw/2))
 ella = Slider(start=-np.pi/2, end=np.pi/2, value= 0, step=0.1, title="Ellipse angle", max_width = np.int32(pw/2))
+ellx.on_change("value",Xelliparam)
+elly.on_change("value",Yelliparam)
 ellw.on_change("value",Welliparam)
 ellh.on_change("value",Helliparam)
 ella.on_change("value",Aelliparam)
 
 renderer.data_source.selected.on_change("indices", select_core)
 
-Rbutton = Button(label="Reset view",button_type="default",max_width = np.int32(pw/2))
-Rbutton.on_click(reset_view)
+RCbutton = Button(label="Reset core",button_type="default",max_width = np.int32(pw/2))
+RCbutton.on_click(reset_core)
+
+RVbutton = Button(label="Reset view",button_type="default",max_width = np.int32(pw/2))
+RVbutton.on_click(reset_view)
 
 Sbutton = Button(label="Save Cat",button_type="success",max_width = np.int32(pw/2))
 Sbutton.on_click(save_valid)
@@ -314,7 +401,7 @@ tab1 = Panel(child=data_table, title='catalogue')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
 present = column(text, tabs)
-mapint = column(plot,row(column(slider, ellw, ellh, ella),column(center,Rbutton,select,Lbutton,Sbutton)))
+mapint = column(plot,row(column(slider, ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,Lbutton,Sbutton)))
 panel = row(present, mapint)
 
 curdoc().add_root(panel)

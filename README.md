@@ -19,9 +19,19 @@ source lhyrica-env/bin/activate
 pip install -r requirements.txt
 ```
 
-##Download the data
+## Download the data
 
-The next step is to download the data, the fits maps and the core catalogue to validate. 
+The next step is to download the data, the fits maps and the core catalogue to validate.
+
+The put the following file (download this [linked file](https://ipag.osug.fr/~robitaij/data.tar.gz)) in the `.../core_valid/` directory.
+
+Unzip the `data` directory:
+
+```
+tar xzvf data.tar.gz
+```
+
+Then, you should have a `.../core_valid/data/` directory with *.fits* and *.csv* files.
 
 ## Launch Bokeh server
 
