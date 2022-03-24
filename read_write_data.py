@@ -14,19 +14,30 @@ def data_to_CDS(filespath, name):
 			   'width': [image.shape[1]],
 			   'height': [image.shape[0]]}
 	#Read catalogue
-	cores = pd.read_csv(filespath+name+'.csv',sep=';')
-	ra = cores['WCS_ACOOR'].to_numpy()
-	dec = cores['WCS_DCOOR'].to_numpy()
-	wcs = WCS(header)
-	reso = header['CDELT2'] * 3600.
-	x, y = wcs.all_world2pix(ra,dec,1)
-	w = cores['AFWHM01'].to_numpy()/reso
-	h = cores['BFWHM01'].to_numpy()/reso
-	angles = cores['THETA01'].to_numpy()-90
-	angles = (angles * np.pi)/180.
+	cores = pd.read_csv(filespath+name+'.csv')
+	if 'WCS_ACOOR' in list(cores.columns):
+		ra = cores['WCS_ACOOR'].to_numpy()
+		dec = cores['WCS_DCOOR'].to_numpy()
+		wcs = WCS(header)
+		reso = header['CDELT2'] * 3600.
+		x, y = wcs.all_world2pix(ra,dec,1)
+		w = cores['AFWHM01'].to_numpy()/reso
+		h = cores['BFWHM01'].to_numpy()/reso
+		angles = cores['THETA01'].to_numpy()-90
+		angles = (angles * np.pi)/180.
+	else:
+		ra = cores['ra'].to_numpy()
+		dec = cores['dec'].to_numpy()
+		wcs = WCS(header)
+		reso = header['CDELT2'] * 3600.
+		x, y = wcs.all_world2pix(ra,dec,1)
+		w = cores['width'].to_numpy()/reso
+		h = cores['height'].to_numpy()/reso
+		angles = cores['angles'].to_numpy()-90
+		angles = (angles * np.pi)/180.	
 	catsz = ra.size
 	validation = np.repeat('Undefined',catsz)
-	
+
 	dict1 = dict(ra=ra,dec=dec,x=x,y=y,width=w,height=h,angles=angles,validation=validation)
 	
 	#Catalogue of new added cores

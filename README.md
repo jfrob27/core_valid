@@ -41,4 +41,4 @@ The core validation interface is based on [Bokeh](https://bokeh.org/) Python lib
 bokeh serve --show core_validation.py
 ```
 
-Then a window will automatically open in your web browser. Wait a few seconds to in order to charge the image and the current catalogue.
+Then a window will automatically open in your web browser. Wait a few seconds in order to charge the image and the current catalogue.
