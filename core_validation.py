@@ -7,7 +7,7 @@ from astropy.visualization.interval import PercentileInterval
 
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper
-from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, CheckboxGroup
+from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
@@ -29,20 +29,33 @@ names = []
 for file in files:
 	if file[-5:] == ".fits":
 		names.append(file[:-5])
+names.sort()
 		
-mapdict, dict1, dict2 = data_to_CDS(filespath, names[0]) 
+mapdict, dict1, dict2, pdfdict, vdict = data_to_CDS(filespath, names[0]) 
 sourcemap = ColumnDataSource(mapdict)
 source = ColumnDataSource(dict1)
 source2 = ColumnDataSource(dict2)
+sourcepdf = ColumnDataSource(pdfdict)
+sourcev = ColumnDataSource(vdict)
+
+#Percentil contrast
+percent = [95, 98, 99, 99.5, 99.99]
 
 #Interaction functions
 ######################
 
 def selectmap(attr, old, new):
-	mapdict, dict1, dict2 = data_to_CDS(filespath, new)
+	mapdict, dict1, dict2, pdfdict, vdict = data_to_CDS(filespath, new)
 	sourcemap.data = mapdict
 	source.data = dict1
 	source2.data = dict2
+	sourcepdf.data = pdfdict
+	sourcev.data = vdict
+	
+	interval = PercentileInterval(percent[radio_button_group.active])
+	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
+	color_mapper.low = vmin
+	color_mapper.high = vmax
 	
 	plot.plot_height = np.int32(pw *(sourcemap.data['height'][0]/sourcemap.data['width'][0]))
 	plot.x_range.start = 0
@@ -50,6 +63,16 @@ def selectmap(attr, old, new):
 	plot.y_range.start = 0
 	plot.y_range.end = sourcemap.data['height'][0]
 	plot.title.text = sourcemap.data['name'][0]
+	
+	distri.x_range.start = sourcev.data['vmin'][0]
+	distri.x_range.end = sourcev.data['vmax'][0]
+	distri.y_range.start = 0
+	distri.y_range.end = sourcepdf.data['PDF'].max()
+	
+	range_slider.update(start = sourcev.data['vmin'][0],
+					    end = sourcev.data['vmax'][0],
+					    value = (vmin,vmax))
+	
 
 def select_core(attr, old, new):
 	#Change status
@@ -180,10 +203,23 @@ def load_valid():
 		source2.data = expdict
 
 def percentil(attr, old, new):
-	interval = PercentileInterval(new)
+	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
 	color_mapper.low = vmin
 	color_mapper.high = vmax
+	range_slider.update(value = (vmin, vmax))
+	newvdict = {'vmin': [vmin,vmin],
+				'vmax': [vmax,vmax],
+			    'y': sourcev.data['y']}
+	sourcev.data = newvdict
+	
+def adjustcontrast(attr, old, new):
+	newvdict = {'vmin': [range_slider.value[0],range_slider.value[0]],
+				'vmax': [range_slider.value[1],range_slider.value[1]],
+			    'y': sourcev.data['y']}
+	sourcev.data = newvdict
+	color_mapper.low = range_slider.value[0]
+	color_mapper.high = range_slider.value[1]
 	
 def Xelliparam(attr, old, new):
 	if not (len(source.selected.indices) == 0):
@@ -344,6 +380,20 @@ Ncolumns = [
 
 Ndata_table = DataTable(source=source2, columns=Ncolumns, width=300, height=ph)
 
+#Plot PDF
+#####################
+
+distri = figure(plot_width = 400, plot_height = 250, 
+				x_range=(sourcev.data['vmin'][0],sourcev.data['vmax'][0]), 
+				y_range=(0,sourcepdf.data['PDF'].max()), match_aspect = True, 
+				tools=["box_zoom,pan,reset"],title="Map's histogram")
+distri.line(x='PDFbin', y='PDF',line_width=1.5,source=sourcepdf)
+range_slider = RangeSlider(start=sourcepdf.data['PDFbin'].min(), end=sourcepdf.data['PDFbin'].max(), value=(sourcev.data['vmin'][0],sourcev.data['vmax'][0]), step=.1, title="Adjust contrast", width = 400)
+range_slider.on_change("value",adjustcontrast)
+distri.line(x='vmin',y='y',source=sourcev,color='orange',line_width=1.5)
+distri.line(x='vmax',y='y',source=sourcev,color='orange',line_width=1.5)
+
+
 #Side Column : Description, Interactions and Buttons
 #########################
 
@@ -354,11 +404,11 @@ This application allows you to validate cores catalogues in order to train LHYRI
 """,
 width=400)
 
-#LABELS = ["95%", "98%", "99%","99.5%","99.99%"]
-#radio_button_group = RadioButtonGroup(labels=LABELS, active=3, max_width = np.int32(pw/2))
-#radio_button_group.on_change("active",percentil)
-slider = Slider(start=90, end=100, value= 99.5, step=0.01, title="Percentile Interval (image contrast)", max_width = np.int32(pw/2))
-slider.on_change("value",percentil)
+LABELS = ["95%", "98%", "99%","99.5%","99.99%"]
+radio_button_group = RadioButtonGroup(labels=LABELS, active=3, max_width = np.int32(pw/2))
+radio_button_group.on_change("active",percentil)
+#slider = Slider(start=50, end=100, value= 99.5, step=0.01, title="Percentile Interval (image contrast)", max_width = np.int32(pw/2))
+#slider.on_change("value",percentil)
 
 expert1.data_source.selected.on_change("indices", select_newcore)
 ellx = Slider(start=2, end=100, value= 20, step=0.5, title="Ellipse x position", max_width = np.int32(pw/2))
@@ -401,7 +451,8 @@ tab1 = Panel(child=data_table, title='catalogue')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
 present = column(text, tabs)
-mapint = column(plot,row(column(slider, ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,Lbutton,Sbutton)))
-panel = row(present, mapint)
+mapint = column(plot,row(column(radio_button_group, ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,Lbutton,Sbutton)))
+contrast = column(distri, range_slider)
+panel = row(present, mapint, contrast)
 
 curdoc().add_root(panel)

@@ -2,6 +2,8 @@ from astropy.io import fits
 from astropy.wcs import WCS
 import pandas as pd
 import numpy as np
+from turbustat.statistics import PDF
+from astropy.visualization.interval import PercentileInterval
 
 def data_to_CDS(filespath, name):
 	#Read fits
@@ -9,10 +11,25 @@ def data_to_CDS(filespath, name):
 	image = HDU[0].data
 	header = HDU[0].header
 	
+	interval = PercentileInterval(99.5)
+	vmin, vmax = interval.get_limits(image)
+	
 	mapdict = {'name': [name],
 			   'image': [image],
 			   'width': [image.shape[1]],
 			   'height': [image.shape[0]]}
+	
+	#Compute PDF
+	pdf = PDF(image, bins=None)
+	pdf.run(verbose=False, do_fit=False);
+	
+	pdfdict = {'PDFbin': pdf.bins,
+			   'PDF': pdf.pdf}
+	
+	vdict = {'vmin': [vmin,vmin],
+			 'vmax': [vmax,vmax],
+			 'y': [0,pdf.pdf.max()]}
+	
 	#Read catalogue
 	cores = pd.read_csv(filespath+name+'.csv')
 	if 'WCS_ACOOR' in list(cores.columns):
@@ -43,4 +60,4 @@ def data_to_CDS(filespath, name):
 	#Catalogue of new added cores
 	dict2 = dict(x=[],y=[],width=[],height=[],angles=[])
 	
-	return mapdict, dict1, dict2
+	return mapdict, dict1, dict2, pdfdict, vdict
