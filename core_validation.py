@@ -7,7 +7,7 @@ from astropy.visualization.interval import PercentileInterval
 
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper
-from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider
+from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
@@ -18,18 +18,27 @@ from read_write_data import data_to_CDS
 import numpy as np
 import pandas as pd
 import os
+from datetime import datetime
 
 #Read maps
 #########
 valfold = './valid_cat/'
 filespath = './data/'
-files = os.listdir(filespath)
+time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
 names = []
+files = os.listdir(filespath)
 for file in files:
 	if file[-5:] == ".fits":
 		names.append(file[:-5])
 names.sort()
+
+listcat = []
+cats = os.listdir(valfold)
+for file in cats:
+	if file[-12:] == "ValidCat.csv":
+		listcat.append(file)
+listcat.sort(reverse=True)
 		
 mapdict, dict1, dict2, pdfdict, vdict = data_to_CDS(filespath, names[0]) 
 sourcemap = ColumnDataSource(mapdict)
@@ -51,6 +60,7 @@ def selectmap(attr, old, new):
 	source2.data = dict2
 	sourcepdf.data = pdfdict
 	sourcev.data = vdict
+	#time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 	
 	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
@@ -104,7 +114,11 @@ def select_core(attr, old, new):
 	validate = pd.DataFrame.from_dict(sdict)
 	if not os.path.isdir(valfold):
             os.makedirs(valfold)
-	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
+	validate.to_csv(valfold+'{}_{}_ValidCat.csv'.format(select.value,time),index=False)
+	if '{}_{}_ValidCat.csv'.format(select.value,time) not in listcat:
+		listcat.append('{}_{}_ValidCat.csv'.format(select.value,time))
+		select_saved.options = listcat
+		select_saved.update(value = '{}_{}_ValidCat.csv'.format(select.value,time))
 
 def select_newcore(attr, old, new):
 	for index in new:
@@ -160,7 +174,7 @@ def save_newcat(attr, old, new):
 		for key in ['x','y','width','height','angles']:
 			NewCat[key].append(source2.data[key][Nindex])
 		newcat = pd.DataFrame.from_dict(NewCat)
-		newcat.to_csv(valfold+'{}_NewCat.csv'.format(select.value),index=False)
+		newcat.to_csv(valfold+'{}_{}_NewCat.csv'.format(select.value,time),index=False)
 
 def save_valid():
 	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
@@ -170,7 +184,11 @@ def save_valid():
 	validate = pd.DataFrame.from_dict(sdict)
 	if not os.path.isdir(valfold):
             os.makedirs(valfold)
-	validate.to_csv(valfold+'{}_ValidCat.csv'.format(select.value),index=False)
+	validate.to_csv(valfold+'{}_{}_ValidCat.csv'.format(select.value,time),index=False)
+	if '{}_{}_ValidCat.csv'.format(select.value,time) not in listcat:
+		listcat.append('{}_{}_ValidCat.csv'.format(select.value,time))
+		select_saved.options = listcat
+		select_saved.update(value = '{}_{}_ValidCat.csv'.format(select.value,time))
 		
 	NewCat = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[])
 	for Nindex in range(len(source2.data['x'])):
@@ -185,19 +203,23 @@ def save_valid():
 		for key in ['x','y','width','height','angles']:
 			NewCat[key].append(source2.data[key][Nindex])
 		newcat = pd.DataFrame.from_dict(NewCat)
-		newcat.to_csv(valfold+'{}_NewCat.csv'.format(select.value),index=False)
+		newcat.to_csv(valfold+'{}_{}_NewCat.csv'.format(select.value,time),index=False)
 		
 def load_valid():
-	#global cdict, expdict
-	validfile = './valid_cat/{}_ValidCat.csv'.format(select.value)
-	newcatfile = './valid_cat/{}_NewCat.csv'.format(select.value)
-	if os.path.exists(validfile):
-		validate = pd.read_csv(validfile)
-		cdict = pd.DataFrame.to_dict(validate,orient='list')
-		source.data = cdict
-	
-	if os.path.exists(newcatfile):
+	global time
+	#validfile = './valid_cat/{}_{}_ValidCat.csv'.format(select.value,time)
+	#newcatfile = './valid_cat/{}_{}_NewCat.csv'.format(select.value,time)
+	file_input = select_saved.value
+	time = file_input[5:24]
+	validfile = valfold+file_input
+	validate = pd.read_csv(validfile)
+	cdict = pd.DataFrame.to_dict(validate,orient='list')
+	source.data = cdict
+
+	newcatfile = valfold+file_input[:-12]+'NewCat.csv'
+	if os.path.exists(newcatfile) == True:
 		fields = ['x','y','width','height','angles']
+		newcatfile = valfold+file_input[:-12]+'NewCat.csv'
 		newcat = pd.read_csv(newcatfile, usecols=fields)
 		expdict = pd.DataFrame.to_dict(newcat,orient='list')
 		source2.data = expdict
@@ -433,6 +455,8 @@ RVbutton.on_click(reset_view)
 Sbutton = Button(label="Save Cat",button_type="success",max_width = np.int32(pw/2))
 Sbutton.on_click(save_valid)
 
+selval=listcat[0] if len(listcat) != 0  else ''
+select_saved = Select(title="Select saved catalogue:", value=selval, options=listcat)
 Lbutton = Button(label="Load Cat",button_type="primary",max_width = np.int32(pw/2))
 Lbutton.on_click(load_valid)
 
@@ -451,7 +475,7 @@ tab1 = Panel(child=data_table, title='catalogue')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
 present = column(text, tabs)
-mapint = column(plot,row(column(radio_button_group, ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,Lbutton,Sbutton)))
+mapint = column(plot,row(column(radio_button_group, ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
 contrast = column(distri, range_slider)
 panel = row(present, mapint, contrast)
 
