@@ -2,3 +2,4 @@ numpy
 astropy
 bokeh
 pandas
+turbustat
