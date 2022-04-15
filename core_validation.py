@@ -6,7 +6,7 @@ from astropy.wcs import WCS
 from astropy.visualization.interval import PercentileInterval
 
 from bokeh.plotting import figure
-from bokeh.models.mappers import LinearColorMapper
+from bokeh.models.mappers import LinearColorMapper, LogColorMapper
 from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
@@ -54,6 +54,7 @@ percent = [95, 98, 99, 99.5, 99.99]
 ######################
 
 def selectmap(attr, old, new):
+	global mapdict, dict1, dict2, pdfdict, vdict#, color_mapper
 	mapdict, dict1, dict2, pdfdict, vdict = data_to_CDS(filespath, new)
 	sourcemap.data = mapdict
 	source.data = dict1
@@ -224,11 +225,23 @@ def load_valid():
 		expdict = pd.DataFrame.to_dict(newcat,orient='list')
 		source2.data = expdict
 
+'''def mapscale(attr, old, new):
+	global color_mapper
+	vmin = range_slider.value[0]
+	vmax = range_slider.value[1]
+	if scaling_button.active == 0:
+		color_mapper = LinearColorMapper(palette="Inferno256",low=vmin,high=vmax)
+	else:
+		color_mapper = LogColorMapper(palette="Inferno256",low=vmin,high=vmax)
+	bkg.glyph.color_mapper = color_mapper'''
+		
 def percentil(attr, old, new):
+	#global color_mapper
 	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
 	color_mapper.low = vmin
 	color_mapper.high = vmax
+	#bkg.glyph.color_mapper = color_mapper
 	range_slider.update(value = (vmin, vmax))
 	newvdict = {'vmin': [vmin,vmin],
 				'vmax': [vmax,vmax],
@@ -236,12 +249,14 @@ def percentil(attr, old, new):
 	sourcev.data = newvdict
 	
 def adjustcontrast(attr, old, new):
+	#global color_mapper
 	newvdict = {'vmin': [range_slider.value[0],range_slider.value[0]],
 				'vmax': [range_slider.value[1],range_slider.value[1]],
 			    'y': sourcev.data['y']}
 	sourcev.data = newvdict
 	color_mapper.low = range_slider.value[0]
 	color_mapper.high = range_slider.value[1]
+	#bkg.glyph.color_mapper = color_mapper
 	
 def Xelliparam(attr, old, new):
 	if not (len(source.selected.indices) == 0):
@@ -426,8 +441,12 @@ This application allows you to validate cores catalogues in order to train LHYRI
 """,
 width=400)
 
+'''LABELSCALES = ["Linear", "Log"]
+scaling_button = RadioButtonGroup(labels=LABELSCALES, active=0)
+scaling_button.on_change("active",mapscale)'''
+
 LABELS = ["95%", "98%", "99%","99.5%","99.99%"]
-radio_button_group = RadioButtonGroup(labels=LABELS, active=3, max_width = np.int32(pw/2))
+radio_button_group = RadioButtonGroup(labels=LABELS, active=3)
 radio_button_group.on_change("active",percentil)
 #slider = Slider(start=50, end=100, value= 99.5, step=0.01, title="Percentile Interval (image contrast)", max_width = np.int32(pw/2))
 #slider.on_change("value",percentil)
@@ -475,8 +494,8 @@ tab1 = Panel(child=data_table, title='catalogue')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
 present = column(text, tabs)
-mapint = column(plot,row(column(radio_button_group, ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
-contrast = column(distri, range_slider)
+mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
+contrast = column(radio_button_group, distri, range_slider)
 panel = row(present, mapint, contrast)
 
 curdoc().add_root(panel)
