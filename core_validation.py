@@ -149,11 +149,18 @@ def reset_core():
 def centering():
 	subheigth = 300
 	subwidth = np.int32(subheigth *(sourcemap.data['width'][0]/sourcemap.data['height'][0]))
-	for index in source.selected.indices:
+	if len(source.selected.indices) != 0:
+		index = source.selected.indices[0]
 		plot.x_range.start = source.data['x'][index] - subwidth/2
 		plot.x_range.end = source.data['x'][index] + subwidth/2
 		plot.y_range.start = source.data['y'][index] - subheigth/2
 		plot.y_range.end = source.data['y'][index] + subheigth/2
+	elif len(source2.selected.indices) != 0:
+		index = source2.selected.indices[0]
+		plot.x_range.start = source2.data['x'][index] - subwidth/2
+		plot.x_range.end = source2.data['x'][index] + subwidth/2
+		plot.y_range.start = source2.data['y'][index] - subheigth/2
+		plot.y_range.end = source2.data['y'][index] + subheigth/2
 	
 def reset_view():
 	plot.x_range.start = 0
