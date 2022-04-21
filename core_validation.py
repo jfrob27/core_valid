@@ -7,7 +7,7 @@ from astropy.visualization.interval import PercentileInterval
 
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper, LogColorMapper
-from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput
+from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput, TextInput
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
@@ -33,8 +33,12 @@ for file in files:
 		names.append(file[:-5])
 names.sort()
 
+username = TextInput(value="Dave_Bowman", title="Username:", width=300)
+#if not os.path.isdir(valfold+username.value+'/'):
+#    os.makedirs(valfold+username.value+'/')
+
 listcat = []
-cats = os.listdir(valfold)
+cats = os.listdir(valfold+username.value+'/')
 for file in cats:
 	if file[-12:] == "ValidCat.csv":
 		listcat.append(file)
@@ -54,14 +58,14 @@ percent = [95, 98, 99, 99.5, 99.99]
 ######################
 
 def selectmap(attr, old, new):
-	global mapdict, dict1, dict2, pdfdict, vdict#, color_mapper
+	global mapdict, dict1, dict2, pdfdict, vdict, time
 	mapdict, dict1, dict2, pdfdict, vdict = data_to_CDS(filespath, new)
 	sourcemap.data = mapdict
 	source.data = dict1
 	source2.data = dict2
 	sourcepdf.data = pdfdict
 	sourcev.data = vdict
-	#time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+	time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 	
 	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
@@ -111,15 +115,17 @@ def select_core(attr, old, new):
 		ellw.value = source.data['width'][index]
 		ellh.value = source.data['height'][index]
 		ella.value = source.data['angles'][index]
-	#Save catalogue
+	#Save catalog
 	validate = pd.DataFrame.from_dict(sdict)
-	if not os.path.isdir(valfold):
-            os.makedirs(valfold)
-	validate.to_csv(valfold+'{}_{}_ValidCat.csv'.format(select.value,time),index=False)
-	if '{}_{}_ValidCat.csv'.format(select.value,time) not in listcat:
-		listcat.append('{}_{}_ValidCat.csv'.format(select.value,time))
+	if not os.path.isdir(valfold+username.value+'/'):
+		os.makedirs(valfold+username.value+'/')
+	validate.to_csv(valfold+username.value+'/'+'{}_{}_{}_ValidCat.csv'
+					.format(select.value,username.value,time),index=False)
+	if '{}_{}_{}_ValidCat.csv'.format(select.value,username.value,time) not in listcat:
+		listcat.append('{}_{}_{}_ValidCat.csv'.format(select.value,username.value,time))
 		select_saved.options = listcat
-		select_saved.update(value = '{}_{}_ValidCat.csv'.format(select.value,time))
+		select_saved.update(value = '{}_{}_{}_ValidCat.csv'
+							.format(select.value,username.value,time))
 
 def select_newcore(attr, old, new):
 	for index in new:
@@ -182,7 +188,25 @@ def save_newcat(attr, old, new):
 		for key in ['x','y','width','height','angles']:
 			NewCat[key].append(source2.data[key][Nindex])
 		newcat = pd.DataFrame.from_dict(NewCat)
-		newcat.to_csv(valfold+'{}_{}_NewCat.csv'.format(select.value,time),index=False)
+		newcat.to_csv(valfold+username.value+'/'+'{}_{}_{}_NewCat.csv'
+					  .format(select.value,username.value,time),index=False)
+		
+def setlistcat(attr, old, new):
+	global listcat, dict1, dict2
+	source.data = dict1
+	source2.data = dict2
+	listcat = []
+	if not os.path.isdir(valfold+username.value+'/'):
+		os.makedirs(valfold+username.value+'/')
+	cats = os.listdir(valfold+username.value+'/')
+	#print("listcat=",cats)
+	for file in cats:
+		if file[-12:] == "ValidCat.csv":
+			listcat.append(file)
+	listcat.sort(reverse=True)
+	select_saved.options = listcat
+	select_saved.update(value = listcat[0])
+	
 
 def save_valid():
 	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
@@ -190,13 +214,15 @@ def save_valid():
 		for index in range(len(source.data['ra'])):
 			sdict[key].append(source.data[key][index])
 	validate = pd.DataFrame.from_dict(sdict)
-	if not os.path.isdir(valfold):
-            os.makedirs(valfold)
-	validate.to_csv(valfold+'{}_{}_ValidCat.csv'.format(select.value,time),index=False)
-	if '{}_{}_ValidCat.csv'.format(select.value,time) not in listcat:
-		listcat.append('{}_{}_ValidCat.csv'.format(select.value,time))
+	if not os.path.isdir(valfold+username.value+'/'):
+            os.makedirs(valfold+username.value+'/')
+	validate.to_csv(valfold+username.value+'/'+'{}_{}_{}_ValidCat.csv'
+					.format(select.value,username.value,time),index=False)
+	if '{}_{}_{}_ValidCat.csv'.format(select.value,username.value,time) not in listcat:
+		listcat.append('{}_{}_{}_ValidCat.csv'.format(select.value,username.value,time))
 		select_saved.options = listcat
-		select_saved.update(value = '{}_{}_ValidCat.csv'.format(select.value,time))
+		select_saved.update(value = '{}_{}_{}_ValidCat.csv'
+							.format(select.value,username.value,time))
 		
 	NewCat = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[])
 	for Nindex in range(len(source2.data['x'])):
@@ -211,20 +237,21 @@ def save_valid():
 		for key in ['x','y','width','height','angles']:
 			NewCat[key].append(source2.data[key][Nindex])
 		newcat = pd.DataFrame.from_dict(NewCat)
-		newcat.to_csv(valfold+'{}_{}_NewCat.csv'.format(select.value,time),index=False)
+		newcat.to_csv(valfold+username.value+'/'+'{}_{}_{}_NewCat.csv'
+					  .format(select.value,username.value,time),index=False)
 		
 def load_valid():
 	global time
 	#validfile = './valid_cat/{}_{}_ValidCat.csv'.format(select.value,time)
 	#newcatfile = './valid_cat/{}_{}_NewCat.csv'.format(select.value,time)
 	file_input = select_saved.value
-	time = file_input[5:24]
-	validfile = valfold+file_input
+	time = file_input[-32:-13]
+	validfile = valfold+username.value+'/'+file_input
 	validate = pd.read_csv(validfile)
 	cdict = pd.DataFrame.to_dict(validate,orient='list')
 	source.data = cdict
 
-	newcatfile = valfold+file_input[:-12]+'NewCat.csv'
+	newcatfile = valfold+username.value+'/'+file_input[:-12]+'NewCat.csv'
 	if os.path.exists(newcatfile) == True:
 		fields = ['x','y','width','height','angles']
 		newcatfile = valfold+file_input[:-12]+'NewCat.csv'
@@ -427,6 +454,8 @@ Ndata_table = DataTable(source=source2, columns=Ncolumns, width=300, height=ph)
 #Plot PDF
 #####################
 
+contrast_title = Div(text="""<h2>Adjust contrast</h2>""", width=400)
+
 distri = figure(plot_width = 400, plot_height = 250, 
 				x_range=(sourcev.data['vmin'][0],sourcev.data['vmax'][0]), 
 				y_range=(0,sourcepdf.data['PDF'].max()), match_aspect = True, 
@@ -444,9 +473,12 @@ distri.line(x='vmax',y='y',source=sourcev,color='orange',line_width=1.5)
 text = Div(text="""<h1><img src="https://ipag.osug.fr/~robitaij/figures/logo_crop.png" 
             width="149" height="123" align="left" margin=20px>
 			LHYRICA Project</h1></br>
-This application allows you to validate cores catalogues in order to train LHYRICA's neural network.
+This application allows you to validate cores catalogs in order to train LHYRICA's neural network.
 """,
 width=400)
+
+#username = TextInput(value="Dave_Bowman", title="Username:",max_width = np.int32(pw/2))
+username.on_change("value",setlistcat)
 
 '''LABELSCALES = ["Linear", "Log"]
 scaling_button = RadioButtonGroup(labels=LABELSCALES, active=0)
@@ -482,7 +514,7 @@ Sbutton = Button(label="Save Cat",button_type="success",max_width = np.int32(pw/
 Sbutton.on_click(save_valid)
 
 selval=listcat[0] if len(listcat) != 0  else ''
-select_saved = Select(title="Select saved catalogue:", value=selval, options=listcat)
+select_saved = Select(title="Select saved catalog:", value=selval, options=listcat)
 Lbutton = Button(label="Load Cat",button_type="primary",max_width = np.int32(pw/2))
 Lbutton.on_click(load_valid)
 
@@ -495,14 +527,25 @@ center.on_click(centering)
 tooltips = [('index','$index'),('ra', '@ra'), ('dec', '@dec'),('x', '@x'), ('y', '@y')]
 plot.add_tools(HoverTool(tooltips=tooltips),boxedit)
 
+#Tutorial
+tuto = Div(text="""<h2>Memo</h2>
+Enter a username to create a catalogue repository and keep the same username for later sessions.</br>
+ </br>
+The catalog on the left panel is linked to the cores displayed on the map. This means that cores can be validated/rejected with a click on the catalog or on the map.</br>
+ </br>
+<img src="https://docs.bokeh.org/en/latest/_images/WheelZoom.png"> Zoom with mouse wheel or track pad</br>
+<img src="https://docs.bokeh.org/en/latest/_images/Tap.png"> Valid/reject catalog's cores</br>
+<img src="https://docs.bokeh.org/en/latest/_images/BoxEdit.png"> Shift+click to add new cores</br>
+<img src="https://docs.bokeh.org/en/latest/_images/Hover.png"> Activate/deactivate core's tag</br>""", width=400)
+
 #Dashboard Display
 
-tab1 = Panel(child=data_table, title='catalogue')
+tab1 = Panel(child=data_table, title='catalog')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
-present = column(text, tabs)
+present = column(text,username,tabs)
 mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
-contrast = column(radio_button_group, distri, range_slider)
+contrast = column(contrast_title, radio_button_group, distri, range_slider, tuto)
 panel = row(present, mapint, contrast)
 
 curdoc().add_root(panel)
