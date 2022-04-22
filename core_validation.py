@@ -254,7 +254,7 @@ def load_valid():
 	newcatfile = valfold+username.value+'/'+file_input[:-12]+'NewCat.csv'
 	if os.path.exists(newcatfile) == True:
 		fields = ['x','y','width','height','angles']
-		newcatfile = valfold+file_input[:-12]+'NewCat.csv'
+		newcatfile = valfold+username.value+'/'+file_input[:-12]+'NewCat.csv'
 		newcat = pd.read_csv(newcatfile, usecols=fields)
 		expdict = pd.DataFrame.to_dict(newcat,orient='list')
 		source2.data = expdict
