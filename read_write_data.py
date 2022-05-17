@@ -11,8 +11,10 @@ def data_to_CDS(filespath, name):
 	image = HDU[0].data
 	header = HDU[0].header
 	
-	interval = PercentileInterval(99.5)
+	interval = PercentileInterval(99.5,)
 	vmin, vmax = interval.get_limits(image)
+	if vmin < 0.:
+		vmin = 0.
 	
 	mapdict = {'name': [name],
 			   'image': [image],

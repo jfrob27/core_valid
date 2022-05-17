@@ -7,7 +7,7 @@ from astropy.visualization.interval import PercentileInterval
 
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper, LogColorMapper
-from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput, TextInput
+from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput, TextInput, PrintfTickFormatter
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
@@ -69,6 +69,8 @@ def selectmap(attr, old, new):
 	
 	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
+	if vmin < 0.:
+		vmin = 0.
 	color_mapper.low = vmin
 	color_mapper.high = vmax
 	
@@ -273,6 +275,8 @@ def percentil(attr, old, new):
 	#global color_mapper
 	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
+	if vmin < 0.:
+		vmin = 0.
 	color_mapper.low = vmin
 	color_mapper.high = vmax
 	#bkg.glyph.color_mapper = color_mapper
@@ -307,8 +311,8 @@ def Xelliparam(attr, old, new):
 			sdict['ra'][index] = Nra
 			sdict['dec'][index] = Ndec
 			source.data = sdict
-			if sdict['x'][index] != dict1['x'][index]:
-				sdict['validation'][index] = 'Modified'
+		if abs(sdict['x'][index] - dict1['x'][index]) > 0.001:
+			sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -333,8 +337,8 @@ def Yelliparam(attr, old, new):
 			sdict['ra'][index] = Nra
 			sdict['dec'][index] = Ndec
 			source.data = sdict
-			if sdict['y'][index] != dict1['y'][index]:
-				sdict['validation'][index] = 'Modified'
+		if abs(sdict['y'][index] - dict1['y'][index]) > 0.001:
+			sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -353,8 +357,8 @@ def Welliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['width'][index] = ellw.value
 			source.data = sdict
-			if sdict['width'][index] != dict1['width'][index]:
-				sdict['validation'][index] = 'Modified'
+		if abs(sdict['width'][index] - dict1['width'][index]) > 0.001:
+			sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -373,8 +377,8 @@ def Helliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['height'][index] = ellh.value
 			source.data = sdict
-			if sdict['height'][index] != dict1['height'][index]:
-				sdict['validation'][index] = 'Modified'
+		if abs(sdict['height'][index] - dict1['height'][index]) > 0.001:
+			sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -393,8 +397,8 @@ def Aelliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['angles'][index] = ella.value
 			source.data = sdict
-			if sdict['angles'][index] != dict1['angles'][index]:
-				sdict['validation'][index] = 'Modified'
+		if abs(sdict['angles'][index] != dict1['angles'][index]) > 0.001:
+			sdict['validation'][index] = 'Modified'
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -407,7 +411,7 @@ def Aelliparam(attr, old, new):
 #Plot image and Table
 #####################
 	
-ph = 700
+ph = 500
 pw = np.int32(ph *(sourcemap.data['width'][0]/sourcemap.data['height'][0]))
 
 select = Select(title="Region:", value=names[0], options=names)
@@ -417,6 +421,8 @@ plot.axis.visible = False
 
 interval = PercentileInterval(99.5)
 vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
+if vmin < 0.:
+	vmin = 0.
 color_mapper = LinearColorMapper(palette="Inferno256",low=vmin,high=vmax)
 
 bkg = plot.image(image='image',
@@ -461,10 +467,12 @@ distri = figure(plot_width = 400, plot_height = 250,
 				y_range=(0,sourcepdf.data['PDF'].max()), match_aspect = True, 
 				tools=["box_zoom,pan,reset"],title="Map's histogram")
 distri.line(x='PDFbin', y='PDF',line_width=1.5,source=sourcepdf)
-range_slider = RangeSlider(start=sourcepdf.data['PDFbin'].min(), end=sourcepdf.data['PDFbin'].max(), value=(sourcev.data['vmin'][0],sourcev.data['vmax'][0]), step=.1, title="Adjust contrast", width = 400)
+range_slider = RangeSlider(start=sourcev.data['vmin'][0], end=sourcepdf.data['PDFbin'].max(), value=(sourcev.data['vmin'][0],sourcev.data['vmax'][0]), step=.1, title="Adjust contrast", width = 400, format=PrintfTickFormatter(format="%.2e"))
 range_slider.on_change("value",adjustcontrast)
 distri.line(x='vmin',y='y',source=sourcev,color='orange',line_width=1.5)
 distri.line(x='vmax',y='y',source=sourcev,color='orange',line_width=1.5)
+distri.xaxis.formatter=PrintfTickFormatter(format="%e")
+distri.yaxis.formatter=PrintfTickFormatter(format="%e")
 
 
 #Side Column : Description, Interactions and Buttons
@@ -544,8 +552,15 @@ tab1 = Panel(child=data_table, title='catalog')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
 present = column(text,username,tabs)
-mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
-contrast = column(contrast_title, radio_button_group, distri, range_slider, tuto)
-panel = row(present, mapint, contrast)
+
+#Orion configuration
+#mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
+#contrast = column(contrast_title, radio_button_group, distri, range_slider, tuto)
+#panel = row(present, mapint, contrast)
+
+#Taurus configuration
+contrast = column(radio_button_group, distri, range_slider)
+mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton),contrast,tuto))
+panel = row(present, mapint)
 
 curdoc().add_root(panel)
