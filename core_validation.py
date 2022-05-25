@@ -4,10 +4,13 @@
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.visualization.interval import PercentileInterval
+from skimage import measure
 
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper, LogColorMapper
-from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput, TextInput, PrintfTickFormatter
+from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, \
+	HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput, TextInput, \
+	PrintfTickFormatter, CheckboxGroup
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
@@ -53,6 +56,20 @@ sourcev = ColumnDataSource(vdict)
 
 #Percentil contrast
 percent = [95, 98, 99, 99.5, 99.99]
+
+#Contour levels
+isomin = 10
+isomax = 90
+isostep = 5
+isonum = int((isomax - isomin)/isostep)
+levels = np.linspace(iso.data['min'][0], iso.data['max'][0], isonum)
+levels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
+for level in levels.tolist():
+	contours = measure.find_contours(sourcemap.data['image'][0], level)
+	for contour in contours:
+		x = contour[:,1]
+		y = contour[:,0]
+iso = ColumnDataSource(isodict)
 
 #Interaction functions
 ######################
@@ -407,7 +424,21 @@ def Aelliparam(attr, old, new):
 		for index in source2.selected.indices:
 			NewCoreCat['angles'][index] = ella.value
 			source2.data = NewCoreCat
-
+			
+def adjustcontours(attr, old, new):
+	newisodict = {'min': [range_contours.value[0]],
+				  'max': [range_contours.value[1]],
+				  'step': [iso.data['step'][0]]
+			     }
+	iso.data = newisodict
+	
+def stepcontours(attr, old, new):
+	newisodict = {'min': [iso.data['min'][0]],
+				  'max': [iso.data['max'][0]],
+				  'step': [new]
+			     }
+	iso.data = newisodict
+			
 #Plot image and Table
 #####################
 	
@@ -438,8 +469,32 @@ expert1 = plot.rect('x', 'y', 'width', 'height', source=source2, line_alpha=0, f
 #Adjust ellipse in rectangle
 expert2 = plot.ellipse(x="x", y="y", width="width", height="height", angle="angles", line_color='green',fill_alpha=0,source=source2,legend_label='New cores')
 
+#Contours
+#################
+
+isonum = int((iso.data['max'][0] - iso.data['min'][0])/iso.data['step'][0])
+levels = np.linspace(iso.data['min'][0], iso.data['max'][0], isonum)
+levels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
+for level in levels.tolist():
+	contours = measure.find_contours(sourcemap.data['image'][0], level)
+	for contour in contours:
+		x = contour[:,1]
+		y = contour[:,0]
+		plot.line(x, y, color='#02FF34', line_width=1.0, legend_label='Contours')
+
+contours_title = Div(text="""<h2>Plot contours</h2>""", width=400)
+
+range_contours = RangeSlider(start=sourcev.data['vmin'][0], end=sourcev.data['vmax'][0], value=(levels[0], levels[-1]), step=.1, title="Min/Max isocontours", width = 400, format=PrintfTickFormatter(format="%.2e"))
+range_contours.on_change("value",adjustcontours)
+
+step_slider = Slider(start=1, end=50, value= iso.data['step'][0], step=1, title="Contour's step", max_width = np.int32(pw/2))
+step_slider.on_change("value",stepcontours)
+		
 plot.legend.location = "top_right"
 plot.legend.click_policy= "hide"
+
+#Tables
+#################
 
 columns = [
         TableColumn(field="ra", title="ra"),
@@ -559,7 +614,7 @@ present = column(text,username,tabs)
 #panel = row(present, mapint, contrast)
 
 #Taurus configuration
-contrast = column(radio_button_group, distri, range_slider)
+contrast = column(radio_button_group, distri, range_slider, contours_title, range_contours, step_slider)
 mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton),contrast,tuto))
 panel = row(present, mapint)
 
