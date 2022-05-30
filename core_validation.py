@@ -10,7 +10,7 @@ from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper, LogColorMapper
 from bokeh.models import ColumnDataSource, Ellipse, Button, DataTable, TableColumn, Slider, \
 	HoverTool, BoxEditTool, Div, Select, RadioButtonGroup, RangeSlider, FileInput, TextInput, \
-	PrintfTickFormatter, CheckboxGroup
+	PrintfTickFormatter, CheckboxGroup, CDSView, IndexFilter
 from bokeh.layouts import column, row
 from bokeh.models.widgets import Panel, Tabs
 from bokeh.transform import factor_cmap
@@ -62,13 +62,17 @@ isomin = 10
 isomax = 90
 isostep = 5
 isonum = int((isomax - isomin)/isostep)
-levels = np.linspace(iso.data['min'][0], iso.data['max'][0], isonum)
-levels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
-for level in levels.tolist():
-	contours = measure.find_contours(sourcemap.data['image'][0], level)
+levels = np.linspace(isomin, isomax, isonum)
+dlevels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
+isodict = {'level' : [],
+		   'x': [],
+		   'y': []}
+for dlevel in dlevels.tolist():
+	contours = measure.find_contours(sourcemap.data['image'][0], dlevel)
 	for contour in contours:
-		x = contour[:,1]
-		y = contour[:,0]
+		isodict['level'].append(dlevel)
+		isodict['x'].append(contour[:,1].tolist())
+		isodict['y'].append(contour[:,0].tolist())
 iso = ColumnDataSource(isodict)
 
 #Interaction functions
@@ -426,17 +430,33 @@ def Aelliparam(attr, old, new):
 			source2.data = NewCoreCat
 			
 def adjustcontours(attr, old, new):
-	newisodict = {'min': [range_contours.value[0]],
-				  'max': [range_contours.value[1]],
-				  'step': [iso.data['step'][0]]
-			     }
+	newisodict = {'level' : [],
+				  'x': [],
+				  'y': []}
+	isonum = int((new[1] - new[0])/step_slider.value)
+	levels = np.linspace(new[0], new[1], isonum)
+	dlevels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
+	for dlevel in dlevels.tolist():
+		contours = measure.find_contours(sourcemap.data['image'][0], dlevel)
+		for contour in contours:
+			newisodict['level'].append(dlevel)
+			newisodict['x'].append(contour[:,1].tolist())
+			newisodict['y'].append(contour[:,0].tolist())
 	iso.data = newisodict
 	
 def stepcontours(attr, old, new):
-	newisodict = {'min': [iso.data['min'][0]],
-				  'max': [iso.data['max'][0]],
-				  'step': [new]
-			     }
+	newisodict = {'level' : [],
+				  'x': [],
+				  'y': []}
+	isonum = int((range_contours.value[1] - range_contours.value[0])/new)
+	levels = np.linspace(range_contours.value[0], range_contours.value[1], isonum)
+	dlevels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
+	for dlevel in dlevels.tolist():
+		contours = measure.find_contours(sourcemap.data['image'][0], dlevel)
+		for contour in contours:
+			newisodict['level'].append(dlevel)
+			newisodict['x'].append(contour[:,1].tolist())
+			newisodict['y'].append(contour[:,0].tolist())
 	iso.data = newisodict
 			
 #Plot image and Table
@@ -471,23 +491,14 @@ expert2 = plot.ellipse(x="x", y="y", width="width", height="height", angle="angl
 
 #Contours
 #################
-
-isonum = int((iso.data['max'][0] - iso.data['min'][0])/iso.data['step'][0])
-levels = np.linspace(iso.data['min'][0], iso.data['max'][0], isonum)
-levels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
-for level in levels.tolist():
-	contours = measure.find_contours(sourcemap.data['image'][0], level)
-	for contour in contours:
-		x = contour[:,1]
-		y = contour[:,0]
-		plot.line(x, y, color='#02FF34', line_width=1.0, legend_label='Contours')
-
+#contour_text = Div(text="""Levels:"""+np.str_(np.unique(np.array(iso.data['level']))), width=400)
+plot.multi_line(xs="x", ys="y", color='#02FF34',source=iso, line_width=1.0, legend_label='Contours')
 contours_title = Div(text="""<h2>Plot contours</h2>""", width=400)
 
-range_contours = RangeSlider(start=sourcev.data['vmin'][0], end=sourcev.data['vmax'][0], value=(levels[0], levels[-1]), step=.1, title="Min/Max isocontours", width = 400, format=PrintfTickFormatter(format="%.2e"))
+range_contours = RangeSlider(start=0, end=100, value=(levels[0], levels[-1]), step=.1, title="Min/Max % isocontours", width = 400)
 range_contours.on_change("value",adjustcontours)
 
-step_slider = Slider(start=1, end=50, value= iso.data['step'][0], step=1, title="Contour's step", max_width = np.int32(pw/2))
+step_slider = Slider(start=1, end=50, value= isostep, step=1, title="Contour's step", max_width = np.int32(pw/2))
 step_slider.on_change("value",stepcontours)
 		
 plot.legend.location = "top_right"
@@ -595,6 +606,8 @@ tuto = Div(text="""<h2>Memo</h2>
 Enter a username to create a catalogue repository and keep the same username for later sessions.</br>
  </br>
 The catalog on the left panel is linked to the cores displayed on the map. This means that cores can be validated/rejected with a click on the catalog or on the map.</br>
+ </br>
+Ellipses and contours can be activated/hidden by clicking in the plot's legend.
  </br>
 <img src="https://docs.bokeh.org/en/latest/_images/WheelZoom.png"> Zoom with mouse wheel or track pad</br>
 <img src="https://docs.bokeh.org/en/latest/_images/Tap.png"> Valid/reject catalog's cores</br>
