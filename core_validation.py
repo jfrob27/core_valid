@@ -114,20 +114,25 @@ def selectmap(attr, old, new):
 
 def select_core(attr, old, new):
 	#Change status
-	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
-	for key in ['ra','dec','x','y','width','height','angles','validation']:
-		for index in range(len(source.data['ra'])):
-			sdict[key].append(source.data[key][index])
+	#sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+	#for key in ['ra','dec','x','y','width','height','angles','validation']:
+	#	for index in range(len(source.data['ra'])):
+	#		sdict[key].append(source.data[key][index])
 	for index in new:
-		if sdict['validation'][index] == 'Undefined':
-			sdict['validation'][index] = 'VALID'
-			source.data = sdict
-		elif sdict['validation'][index] == 'VALID':
-			sdict['validation'][index] = 'REJECT'
-			source.data = sdict
+		#if sdict['validation'][index] == 'Undefined':
+		#	sdict['validation'][index] = 'VALID'
+		#	source.data = sdict
+		#elif sdict['validation'][index] == 'VALID':
+		#	sdict['validation'][index] = 'REJECT'
+		#	source.data = sdict
+		#else:
+		#	sdict['validation'][index] = 'Undefined'
+		#	source.data = sdict
+		#Change select status button
+		if source.data['validation'][index] != 'Modified':
+			status_button.active = STATUS.index(source.data['validation'][index])
 		else:
-			sdict['validation'][index] = 'Undefined'
-			source.data = sdict
+			status_button.active = None
 		#Update parameters
 		ellx.value = source.data['x'][index]
 		ellx.start = source.data['x'][index] - 50.
@@ -138,6 +143,27 @@ def select_core(attr, old, new):
 		ellw.value = source.data['width'][index]
 		ellh.value = source.data['height'][index]
 		ella.value = source.data['angles'][index]
+	#Save catalog
+	#validate = pd.DataFrame.from_dict(sdict)
+	#if not os.path.isdir(valfold+username.value+'/'):
+	#	os.makedirs(valfold+username.value+'/')
+	#validate.to_csv(valfold+username.value+'/'+'{}_{}_{}_ValidCat.csv'
+	#				.format(select.value,username.value,time),index=False)
+	#if '{}_{}_{}_ValidCat.csv'.format(select.value,username.value,time) not in listcat:
+	#	listcat.append('{}_{}_{}_ValidCat.csv'.format(select.value,username.value,time))
+	#	select_saved.options = listcat
+	#	select_saved.update(value = '{}_{}_{}_ValidCat.csv'
+	#						.format(select.value,username.value,time))
+		
+def select_status(attr, old, new):
+	sdict = dict(ra=[],dec=[],x=[],y=[],width=[],height=[],angles=[],validation=[])
+	for key in ['ra','dec','x','y','width','height','angles','validation']:
+		for index in range(len(source.data['ra'])):
+			sdict[key].append(source.data[key][index])
+	for index in source.selected.indices:
+		if sdict['validation'][index] != 'Modified':
+			sdict['validation'][index] = STATUS[status_button.active]
+			source.data = sdict
 	#Save catalog
 	validate = pd.DataFrame.from_dict(sdict)
 	if not os.path.isdir(valfold+username.value+'/'):
@@ -174,6 +200,8 @@ def reset_core():
 		for key in ['ra','dec','x','y','width','height','angles','validation']:
 			sdict[key][index] = dict1[key][index]
 	source.data = sdict
+	#Change select status button
+	status_button.active = 0
 			
 def centering():
 	subheigth = 300
@@ -332,8 +360,10 @@ def Xelliparam(attr, old, new):
 			sdict['ra'][index] = Nra
 			sdict['dec'][index] = Ndec
 			source.data = sdict
-		if abs(sdict['x'][index] - dict1['x'][index]) > 0.001:
+		if (abs(sdict['x'][index] - dict1['x'][index]) > 0.00001) or \
+		   (abs(sdict['y'][index] - dict1['y'][index]) > 0.00001):
 			sdict['validation'][index] = 'Modified'
+			status_button.active = None
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -358,8 +388,10 @@ def Yelliparam(attr, old, new):
 			sdict['ra'][index] = Nra
 			sdict['dec'][index] = Ndec
 			source.data = sdict
-		if abs(sdict['y'][index] - dict1['y'][index]) > 0.001:
+		if (abs(sdict['x'][index] - dict1['x'][index]) > 0.00001) or \
+		   (abs(sdict['y'][index] - dict1['y'][index]) > 0.00001):
 			sdict['validation'][index] = 'Modified'
+			status_button.active = None
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -380,6 +412,7 @@ def Welliparam(attr, old, new):
 			source.data = sdict
 		if abs(sdict['width'][index] - dict1['width'][index]) > 0.001:
 			sdict['validation'][index] = 'Modified'
+			status_button.active = None
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -400,6 +433,7 @@ def Helliparam(attr, old, new):
 			source.data = sdict
 		if abs(sdict['height'][index] - dict1['height'][index]) > 0.001:
 			sdict['validation'][index] = 'Modified'
+			status_button.active = None
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -418,8 +452,9 @@ def Aelliparam(attr, old, new):
 		for index in source.selected.indices:
 			sdict['angles'][index] = ella.value
 			source.data = sdict
-		if abs(sdict['angles'][index] != dict1['angles'][index]) > 0.001:
+		if abs(sdict['angles'][index] - dict1['angles'][index]) > 0.001:
 			sdict['validation'][index] = 'Modified'
+			status_button.active = None
 	if not (len(source2.selected.indices) == 0):
 		NewCoreCat = dict(x=[],y=[],width=[],height=[],angles=[])
 		for Mindex in range(len(source2.data['x'])):
@@ -479,9 +514,9 @@ color_mapper = LinearColorMapper(palette="Inferno256",low=vmin,high=vmax)
 bkg = plot.image(image='image',
            dh='height', dw='width', x=0, y=0, source=sourcemap, color_mapper=color_mapper)
 
-STATUS = ['Undefined', 'VALID','REJECT','Modified']
+FSTATUS = ['Undefined', 'VALID','REJECT','Modified']
 COLOR = ['gray','red','blue','red']
-renderer = plot.ellipse(x="x", y="y", width="width", height="height", angle="angles", line_color=factor_cmap('validation', COLOR, STATUS),fill_alpha=0,source=source,legend_field='validation')
+renderer = plot.ellipse(x="x", y="y", width="width", height="height", angle="angles", line_color=factor_cmap('validation', COLOR, FSTATUS),fill_alpha=0,source=source,legend_field='validation')
 
 #Trace first position and size for new cores
 expert1 = plot.rect('x', 'y', 'width', 'height', source=source2, line_alpha=0, fill_alpha=0)
@@ -504,8 +539,12 @@ step_slider.on_change("value",stepcontours)
 plot.legend.location = "top_right"
 plot.legend.click_policy= "hide"
 
-#Tables
-#################
+#Tables & validation button
+###########################
+
+STATUS = ['Undefined', 'VALID','REJECT']
+status_button = RadioButtonGroup(labels=STATUS, active=0, width=300)
+status_button.on_change("active",select_status)
 
 columns = [
         TableColumn(field="ra", title="ra"),
@@ -619,7 +658,7 @@ Ellipses and contours can be activated/hidden by clicking in the plot's legend.
 tab1 = Panel(child=data_table, title='catalog')
 tab2 = Panel(child=Ndata_table, title='new cores')
 tabs = Tabs(tabs=[tab1,tab2])
-present = column(text,username,tabs)
+present = column(text,username,status_button,tabs)
 
 #Orion configuration
 #mapint = column(plot,row(column(ellx, elly, ellw, ellh, ella),column(RCbutton,center,RVbutton,select,select_saved,Lbutton,Sbutton)))
