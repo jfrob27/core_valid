@@ -88,12 +88,29 @@ def selectmap(attr, old, new):
 	sourcev.data = vdict
 	time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 	
+	#Contrast
 	interval = PercentileInterval(percent[radio_button_group.active])
 	vmin, vmax = interval.get_limits(sourcemap.data['image'][0])
 	if vmin < 0.:
 		vmin = 0.
 	color_mapper.low = vmin
 	color_mapper.high = vmax
+	
+	#Contours
+	levels = np.linspace(isomin, isomax, isonum)
+	dlevels = ((np.array(levels) * np.max(sourcemap.data['image'][0]))/100.)
+	newisodict = {'level' : [],
+			   'x': [],
+			   'y': []}
+	for dlevel in dlevels.tolist():
+		contours = measure.find_contours(sourcemap.data['image'][0], dlevel)
+		for contour in contours:
+			newisodict['level'].append(dlevel)
+			newisodict['x'].append(contour[:,1].tolist())
+			newisodict['y'].append(contour[:,0].tolist())
+	iso.data = newisodict
+	range_contours.update(value = (isomin,isomax))
+	step_slider.update(value = isostep)
 	
 	plot.plot_height = np.int32(pw *(sourcemap.data['height'][0]/sourcemap.data['width'][0]))
 	plot.x_range.start = 0
@@ -637,7 +654,7 @@ expert2.data_source.on_change('data',save_newcat)
 center = Button(label="center object",button_type="default",max_width = np.int32(pw/2))
 center.on_click(centering)
 
-tooltips = [('index','$index'),('ra', '@ra'), ('dec', '@dec'),('x', '@x'), ('y', '@y')]
+tooltips = [('index','$index'),('ra', '@ra'), ('dec', '@dec')]
 plot.add_tools(HoverTool(tooltips=tooltips),boxedit)
 
 #Tutorial
